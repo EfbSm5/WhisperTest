@@ -1,6 +1,7 @@
-package com.example.whispertest
+package com.example.whispertest.whisperEngine
 
 import android.util.Log
+import com.example.whispertest.AppUtil
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -16,21 +17,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import java.util.Arrays
-import kotlin.Boolean
-import kotlin.ByteArray
-import kotlin.FloatArray
-import kotlin.Int
-import kotlin.OptIn
-import kotlin.String
-import kotlin.Throws
-import kotlin.Unit
-import kotlin.apply
-import kotlin.isInitialized
 import kotlin.math.cos
 import kotlin.math.log10
 import kotlin.math.min
 import kotlin.math.sin
-import kotlin.run
 
 object WhisperUtil {
     private const val TAG = "WhisperUtil"
@@ -83,8 +73,6 @@ object WhisperUtil {
             return FloatArray(0)
         }
 
-        // Get the audio format details from the header
-        val sampleRate: Int = byteArrayToNumber(header, 24, 4)
         val bitsPerSample: Int = byteArrayToNumber(header, 34, 2)
         if (bitsPerSample != 16 && bitsPerSample != 32) {
             Log.d(TAG, "convertToPcmFloat: Unsupported bits per sample: $bitsPerSample")
@@ -265,9 +253,6 @@ object WhisperUtil {
         }
 
         val nFft = 1 + fftSize / 2
-
-        /**//////////// UNCOMMENT below block to use multithreaded mel calculation ///////////////////////// */
-        // Calculate mel values using multiple threads
         val workers: MutableList<Thread> = ArrayList<Thread>()
         for (iw in 0..<nThreads) {
             val ith = iw // Capture iw in a final variable for use in the lambda
@@ -280,16 +265,8 @@ object WhisperUtil {
                 val fftOut = FloatArray(fftSize * 2)
 
                 var i = ith
-                while (i < WhisperMel.nLen) {/**//////////// END of Block /////////////////////////////////////////////////////////////////////// */ /**//////////// COMMENT below block to use multithreaded mel calculation /////////////////////////// */
-//        float[] fftIn = new float[fftSize];
-//        Arrays.fill(fftIn, 0.0f);
-//        float[] fftOut = new float[fftSize * 2];
-//
-//        for (int i = 0; i < mel.nLen; i++) {
-                    /**//////////// END of Block /////////////////////////////////////////////////////////////////////// */
+                while (i < WhisperMel.nLen) {
                     val offset = i * fftStep
-
-                    // apply Hanning window
                     for (j in 0..<fftSize) {
                         if (offset + j < nSamples) {
                             fftIn[j] = hann[j] * samples[offset + j]
@@ -298,7 +275,6 @@ object WhisperUtil {
                         }
                     }
 
-                    // FFT -> mag^2
                     fft(fftIn, fftOut)
                     for (j in 0..<fftSize) {
                         fftOut[j] =
@@ -309,7 +285,6 @@ object WhisperUtil {
                         fftOut[j] += fftOut[fftSize - j]
                     }
 
-                    // mel spectrogram
                     for (j in 0..<WhisperMel.nMel) {
                         var sum = 0.0
                         for (k in 0..<nFft) {
@@ -330,7 +305,6 @@ object WhisperUtil {
             thread.start()
         }
 
-        // Wait for all threads to finish
         for (worker in workers) {
             try {
                 worker.join()
@@ -338,10 +312,6 @@ object WhisperUtil {
                 e.printStackTrace()
             }
         }
-
-        /**//////////// END of Block /////////////////////////////////////////////////////////////////////// */
-
-        // clamping and normalization
         var mmax = -1e20
         for (i in 0..<WhisperMel.nMel * WhisperMel.nLen) {
             if (WhisperMel.data[i] > mmax) {
@@ -359,6 +329,7 @@ object WhisperUtil {
 
         return WhisperMel.data
     }
+
     private fun fft(input: FloatArray, output: FloatArray) {
         val inSize = input.size
         if (inSize == 1) {
@@ -404,6 +375,7 @@ object WhisperUtil {
             output[2 * (k + inSize / 2) + 1] = evenFft[2 * k + 1] - re * imOdd - im * reOdd
         }
     }
+
     private fun dft(input: FloatArray, output: FloatArray) {
         val inSize = input.size
         for (k in 0..<inSize) {

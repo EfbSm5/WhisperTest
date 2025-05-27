@@ -29,21 +29,36 @@ class VoiceRecorder {
         }
     }
 
+    fun stop() {
+        stopRecord()
+        stopPlay()
+    }
+
     private fun startRecord() {
-        mediaRecorder = MediaRecorder().apply {
-            16000
-            setAudioSource(MediaRecorder.AudioSource.DEFAULT)
-            setOutputFormat(MediaRecorder.OutputFormat.DEFAULT)
-            setOutputFile(file)
-            setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT)
-            try {
-                prepare()
-                start()
-            } catch (e: Exception) {
-                throw e
+        if (mediaRecorder == null) {
+            mediaRecorder = MediaRecorder().apply {
+                16000
+                setAudioSource(MediaRecorder.AudioSource.DEFAULT)
+                setOutputFormat(MediaRecorder.OutputFormat.DEFAULT)
+                setOutputFile(file)
+                setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT)
+                try {
+                    prepare()
+                    start()
+                } catch (e: Exception) {
+                    throw e
+                }
+            }
+        } else {
+            mediaRecorder.apply {
+                try {
+                    this!!.prepare()
+                    start()
+                } catch (e: Exception) {
+                    throw e
+                }
             }
         }
-
     }
 
     private fun stopRecord() {
@@ -55,14 +70,26 @@ class VoiceRecorder {
     }
 
     private fun startPlay() {
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(file)
-            try {
-                prepare()
-                start()
-            } catch (e: Exception) {
-                throw e
+        if (mediaPlayer == null) {
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(file)
+                try {
+                    prepare()
+                    start()
+                } catch (e: Exception) {
+                    throw e
+                }
             }
+        } else {
+            mediaPlayer!!.apply {
+                try {
+                    prepare()
+                    start()
+                } catch (e: Exception) {
+                    throw e
+                }
+            }
+
         }
     }
 
